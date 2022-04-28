@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: coinsKG-user-service
+  r2dbc:
+#   url: r2dbc:postgresql://localhost:5432/demo
+    url:  r2dbc:mysql://localhost:3306/coinskg
+    properties:
+      useLegacyDatetimeCode: false
+      serverZoneId: Asia/Bishkek
+    username: nikita
+    password: nikita2281337
+
+
+
