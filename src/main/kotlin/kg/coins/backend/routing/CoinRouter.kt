@@ -22,13 +22,15 @@ class CoinRouter (private val coinHandler: CoinHandler){
                         , coinHandler::getCoinWithParam)
                     GET("", coinHandler::getCoinWithParam)
 
-//                    contentType(APPLICATION_JSON).nest {
-//                        POST("", categoryHandler::add)
-//                    }
-//                    GET("",queryParam("mode") { true },coinHandler::getCoinByCategory)
+                    contentType(MediaType.APPLICATION_JSON).nest {
+                        POST("", coinHandler::add)
+                    }
+
 
                     "/{id}".nest {
                         GET("",coinHandler::getById)
+                        DELETE("", coinHandler::delete)
+                        POST("", coinHandler::update)
                     }
                 }
             }

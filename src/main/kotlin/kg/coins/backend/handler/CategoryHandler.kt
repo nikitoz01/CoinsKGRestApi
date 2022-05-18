@@ -1,6 +1,9 @@
 package kg.coins.backend.handler
 
+import kg.coins.backend.model.Category
 import kg.coins.backend.repository.CategoryRepository
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.map
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.server.*
@@ -89,50 +92,99 @@ class CategoryHandler(
     }
 
 
+    suspend fun upperCheck(categoryId: Int, categoryParentId: Int? = null): Boolean{
+        val set = mutableSetOf(categoryId)
+        categoryParentId?.let { set.add(it) } ?: run{null}
 
-//
-//    suspend fun add(req: ServerRequest): ServerResponse {
-//        val receivedCat = req.awaitBodyOrNull(CatDto::class)
-//
-//        return receivedCat?.let {
-//            ServerResponse
-//                .ok()
-//                .contentType(MediaType.APPLICATION_JSON)
-//                .bodyValueAndAwait(
-//                    categoryRepository
-//                        .save(it.toEntity())
-//                        .toDto()
-//                )
-//        } ?: ServerResponse.badRequest().buildAndAwait()
-//    }
-//
-//    suspend fun update(req: ServerRequest): ServerResponse {
-//        val id = req.pathVariable("id")
-//
-//        val receivedCat = req.awaitBodyOrNull(CatDto::class)
-//            ?: return ServerResponse.badRequest().buildAndAwait()
-//
-//        val existingCat = categoryRepository.findById(id.toLong())
-//            ?: return ServerResponse.notFound().buildAndAwait()
-//
-//        return ServerResponse
-//            .ok()
-//            .contentType(MediaType.APPLICATION_JSON)
-//            .bodyValueAndAwait(
-//                categoryRepository.save(
-//                    receivedCat.toEntity().copy(id = existingCat.id)
-//                ).toDto()
-//            )
-//    }
-//
-//    suspend fun delete(req: ServerRequest): ServerResponse {
-//        val id = req.pathVariable("id")
-//
-//        return if (categoryRepository.existsById(id.toLong())) {
-//            categoryRepository.deleteById(id.toLong())
-//            ServerResponse.noContent().buildAndAwait()
-//        } else {
-//            ServerResponse.notFound().buildAndAwait()
-//        }
-//    }
+        while(true){
+            val parentCategory = categoryRepository.findById(categoryParentId!!)?.parentId
+            println("$parentCategory")
+            if (parentCategory == null) break else {
+            if(!set.contains(parentCategory)) set.add(parentCategory)
+            else return false }
+        }
+        return true
+    }
+
+    suspend fun lowerCheck(categoryId:Int, set: MutableSet<Int>): Boolean{
+        val childCategory = categoryRepository.findAllByParentId(categoryId)
+        var b = true
+        childCategory.map {
+
+            println("b"+it.id)
+
+            if (set.contains(it.id)){
+                b = false
+                return@map
+            } else{
+                set.add(it.id)
+                b = lowerCheck(it.id,set)
+                if (!b) return@map
+            }
+        }.collect()
+        return b
+    }
+
+    suspend fun test(req: ServerRequest): ServerResponse{
+        val id = req.pathVariable("id").toInt()
+        var b = true
+        val set: MutableSet<Int> = mutableSetOf()
+        b = upperCheck(id)
+        if (b) b = lowerCheck(id, set)
+
+        return if (b) ServerResponse.ok().buildAndAwait()
+        else ServerResponse.badRequest().buildAndAwait()
+    }
+
+
+    suspend fun add(req: ServerRequest): ServerResponse {
+        val receivedCat = req.awaitBodyOrNull(Category::class)
+            ?: return ServerResponse.badRequest().buildAndAwait()
+
+        return if ( upperCheck(receivedCat.id, receivedCat.parentId)) receivedCat.let {
+            ServerResponse
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValueAndAwait(
+                    categoryRepository
+                        .save(it)
+                )
+        }
+        else ServerResponse.badRequest().buildAndAwait()
+    }
+
+    suspend fun update(req: ServerRequest): ServerResponse {
+        val id = req.pathVariable("id")
+
+        val receivedCat = req.awaitBodyOrNull(Category::class)
+            ?: return ServerResponse.badRequest().buildAndAwait()
+
+        val existingCat = categoryRepository.findById(id.toInt())
+            ?: return ServerResponse.notFound().buildAndAwait()
+
+        return if (upperCheck(id.toInt(), receivedCat.parentId)) ServerResponse
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValueAndAwait(
+                categoryRepository.save(
+                    receivedCat.copy(id = existingCat.id)
+                )
+            )
+        else ServerResponse.badRequest().buildAndAwait()
+    }
+
+    suspend fun delete(req: ServerRequest): ServerResponse {
+        val id = req.pathVariable("id")
+        return if (categoryRepository.existsById(id.toInt())) {
+            try {
+                categoryRepository.deleteById(id.toInt())
+                ServerResponse.noContent().buildAndAwait()
+            }
+            catch (e: Exception) {
+                ServerResponse.badRequest().buildAndAwait()
+            }
+        } else {
+            ServerResponse.notFound().buildAndAwait()
+        }
+    }
 }

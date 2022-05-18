@@ -1,5 +1,6 @@
 package kg.coins.backend.handler
 
+import kg.coins.backend.model.Coin
 import kg.coins.backend.repository.CategoryRepository
 import kg.coins.backend.repository.CoinRepository
 import org.springframework.http.MediaType
@@ -77,5 +78,54 @@ class CoinHandler(
                     .ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyAndAwait(  coinRepository.findAllMain() )
+    }
+
+    suspend fun add(req: ServerRequest): ServerResponse {
+        val receivedCoin = req.awaitBodyOrNull(Coin::class)
+
+        return receivedCoin?.let {
+            ServerResponse
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValueAndAwait(
+                    coinRepository
+                        .save(it)
+                )
+        } ?: ServerResponse.badRequest().buildAndAwait()
+    }
+
+    suspend fun update(req: ServerRequest): ServerResponse {
+        val id = req.pathVariable("id")
+
+        val receivedCoin = req.awaitBodyOrNull(Coin::class)
+            ?: return ServerResponse.badRequest().buildAndAwait()
+
+        val existingCoin = coinRepository.findById(id.toInt())
+            ?: return ServerResponse.notFound().buildAndAwait()
+
+        return ServerResponse
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValueAndAwait(
+                coinRepository.save(
+                    receivedCoin.copy(id = existingCoin.id)
+                )
+            )
+    }
+
+    suspend fun delete(req: ServerRequest): ServerResponse {
+        val id = req.pathVariable("id")
+
+        return if (coinRepository.existsById(id.toInt())) {
+            try {
+                coinRepository.deleteById(id.toInt())
+                ServerResponse.noContent().buildAndAwait()
+            }
+            catch (e: Exception) {
+                ServerResponse.badRequest().buildAndAwait()
+            }
+        } else {
+            ServerResponse.notFound().buildAndAwait()
+        }
     }
 }

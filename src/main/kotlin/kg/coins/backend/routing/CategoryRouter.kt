@@ -19,12 +19,18 @@ class CategoryRouter (private val categoryHandler: CategoryHandler) {
                     GET("",queryParam("mode"){ true } and
                             queryParam("updateTime") { true },categoryHandler::getCategoriesWithParam)
                     GET("",categoryHandler::getCategoriesWithParam)
-//                    contentType(APPLICATION_JSON).nest {
-//                        POST("", categoryHandler::add)
-//                    }
+
+                    contentType(APPLICATION_JSON).nest {
+                        POST("", categoryHandler::add)
+                    }
+                    "/test/{id}".nest {
+                        GET("",categoryHandler::test)
+                    }
 
                     "/{id}".nest {
                         GET("",queryParam("mode")  { true },categoryHandler::getCategoryByIdWithParam)
+                        DELETE("", categoryHandler::delete)
+                        POST("", categoryHandler::update)
                     }
                 }
             }
