@@ -1,4 +1,8 @@
 spring:
+  security:
+    user:
+      name: "Nikita"
+      password: "123456"
   application:
     name: coinsKG-user-service
   r2dbc:

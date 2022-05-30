@@ -94,10 +94,10 @@ class CategoryHandler(
 
     suspend fun upperCheck(categoryId: Int, categoryParentId: Int? = null): Boolean{
         val set = mutableSetOf(categoryId)
-        categoryParentId?.let { set.add(it) } ?: run{null}
+        categoryParentId?.let { set.add(it) } ?: run{ return true}
 
         while(true){
-            val parentCategory = categoryRepository.findById(categoryParentId!!)?.parentId
+            val parentCategory = categoryRepository.findById(categoryParentId)?.parentId
             println("$parentCategory")
             if (parentCategory == null) break else {
             if(!set.contains(parentCategory)) set.add(parentCategory)
